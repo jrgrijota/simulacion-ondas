@@ -97,7 +97,7 @@ function setup() {
         btn.addEventListener('click', () => {
             const d = parseFloat(btn.dataset.frac) * wave.lambda;
             const max = parseFloat(sliderDx.elt.max);
-            dxPQ = Math.min(max, Math.round(d * 100) / 100);
+            dxPQ = Math.min(max, d);
             sliderDx.value(dxPQ);
             refresh();
         });
