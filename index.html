@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ondas — Simulación Interactiva</title>
+    <script src="js/i18n-en.js"></script>
+    <script src="js/i18n-ca.js"></script>
+    <script src="js/i18n-eu.js"></script>
+    <script src="js/i18n-gl.js"></script>
+    <script src="js/i18n.js"></script>
+    <script src="js/vendor/p5.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <script src="js/estadisticas.js" data-sim="sim-ondas"></script>
+    <script src="js/sello.js" data-contenedor="main.simulation-panel" data-esquina="tl"></script>
+</head>
+<body class="mode-transversal">
+    <div class="app-container">
+
+        <!-- ── PANEL DE CONTROL ──────────────────────────────────── -->
+        <aside class="control-panel">
+
+            <header>
+                <div class="header-top">
+                    <svg class="header-icon-svg" width="42" height="42" viewBox="0 0 42 42" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <rect x="3" y="5" width="36" height="32" rx="3.5" stroke="#585858" stroke-width="1.8" fill="#0d0d0d"/>
+                        <!-- Onda transversal -->
+                        <path d="M7 15 C10 8, 13 8, 16 15 S22 22, 25 15 S31 8, 35 15" stroke="#38bdf8" stroke-width="2" fill="none" stroke-linecap="round"/>
+                        <circle cx="25" cy="15" r="2.2" fill="#f87171"/>
+                        <!-- Onda longitudinal: compresiones y enrarecimientos -->
+                        <g stroke="#facc15" stroke-width="1.6" stroke-linecap="round">
+                            <line x1="8" y1="25" x2="8" y2="32"/><line x1="10" y1="25" x2="10" y2="32"/><line x1="12" y1="25" x2="12" y2="32"/>
+                            <line x1="17" y1="25" x2="17" y2="32"/><line x1="22" y1="25" x2="22" y2="32"/>
+                            <line x1="26" y1="25" x2="26" y2="32"/><line x1="28" y1="25" x2="28" y2="32"/><line x1="30" y1="25" x2="30" y2="32"/>
+                            <line x1="34" y1="25" x2="34" y2="32"/>
+                        </g>
+                    </svg>
+                    <h1>Ondas</h1>
+                </div>
+                <p class="subtitle">Transversales y longitudinales</p>
+                <details class="header-details">
+                    <summary>Descripción y reglas rápidas</summary>
+                    <div class="header-details-body">
+                        <p class="section-note" data-i18n="nota-descripcion">
+                            Un foco hace vibrar una cuerda o un muelle y la perturbación avanza por el medio.
+                            Cambia la amplitud, la frecuencia y la velocidad, mide la longitud de onda y el
+                            período y comprueba que la onda transporta energía, pero no materia.
+                        </p>
+                        <div class="quick-rule">
+                            <span class="qr-a" data-i18n="regla-energia">Una onda transporta energía, no materia</span>
+                            <span class="qr-b" data-i18n="regla-v">v = λ / T = λ · f</span>
+                            <span class="qr-c" data-i18n="regla-tipos">Transversal: vibra ⟂ a la propagación · Longitudinal: vibra en la misma dirección</span>
+                        </div>
+                    </div>
+                </details>
+            </header>
+
+            <hr class="divider">
+
+            <!-- SELECTOR DE MODO -->
+            <div class="mode-switch" role="tablist">
+                <button id="mode-transversal" type="button" class="mode-btn active" role="tab" aria-selected="true">
+                    Transversal
+                    <span class="mode-sub">cuerda</span>
+                </button>
+                <button id="mode-longitudinal" type="button" class="mode-btn" role="tab" aria-selected="false">
+                    Longitudinal
+                    <span class="mode-sub">muelle</span>
+                </button>
+                <button id="mode-comparar" type="button" class="mode-btn" role="tab" aria-selected="false">
+                    Comparar
+                    <span class="mode-sub">las dos</span>
+                </button>
+            </div>
+
+            <!-- FOCO -->
+            <section class="control-group">
+                <h2>Foco</h2>
+
+                <div class="input-wrapper">
+                    <label for="wave-kind">Tipo de perturbación</label>
+                    <select id="wave-kind" class="custom-select">
+                        <option value="continua" selected>Onda continua</option>
+                        <option value="pulso">Un pulso cada vez</option>
+                    </select>
+                </div>
+
+                <div class="input-wrapper">
+                    <div class="label-container">
+                        <label for="slider-a">Amplitud (A)</label>
+                        <span id="val-a" class="value-badge">0,20 m</span>
+                    </div>
+                    <input type="range" id="slider-a" min="0.05" max="0.30" value="0.20" step="0.01">
+                    <div class="slider-bounds"><span>0,05 m</span><span>0,30 m</span></div>
+                </div>
+
+                <div class="input-wrapper">
+                    <div class="label-container">
+                        <label for="slider-f">Frecuencia (f)</label>
+                        <span id="val-f" class="value-badge">1,00 Hz</span>
+                    </div>
+                    <input type="range" id="slider-f" min="0.25" max="2" value="1" step="0.05">
+                    <div class="slider-bounds"><span>0,25 Hz</span><span>2,00 Hz</span></div>
+                </div>
+
+                <div class="btn-row only-pulso">
+                    <button id="btn-pulse" type="button" class="ctrl-btn primary btn-wide">〰 Emitir pulso</button>
+                </div>
+                <p class="field-hint" data-i18n="ayuda-foco">La amplitud y la frecuencia las fija el foco: si las cambias, el cambio sale del foco y avanza por el medio.</p>
+            </section>
+
+            <hr class="divider">
+
+            <!-- MEDIO -->
+            <section class="control-group">
+                <h2>Medio</h2>
+                <div class="input-wrapper">
+                    <div class="label-container">
+                        <label for="slider-v">Velocidad de propagación (v)</label>
+                        <span id="val-v" class="value-badge">1,50 m/s</span>
+                    </div>
+                    <input type="range" id="slider-v" min="0.5" max="3" value="1.5" step="0.1">
+                    <div class="slider-bounds"><span>0,5 m/s</span><span>3,0 m/s</span></div>
+                </div>
+                <p class="field-hint" data-i18n="ayuda-medio">La velocidad depende del medio (por ejemplo, de lo tensa que está la cuerda), no del foco.</p>
+            </section>
+
+            <hr class="divider">
+
+            <!-- VISTA -->
+            <section class="control-group">
+                <h2>Vista</h2>
+                <div class="input-wrapper">
+                    <label>Velocidad de la simulación</label>
+                    <div class="seg-control" role="radiogroup" aria-label="Velocidad de la simulación">
+                        <button type="button" class="seg-btn speed-btn active" data-speed="1" role="radio" aria-checked="true">×1</button>
+                        <button type="button" class="seg-btn speed-btn" data-speed="0.5" role="radio" aria-checked="false">×0,5</button>
+                        <button type="button" class="seg-btn speed-btn" data-speed="0.25" role="radio" aria-checked="false">×0,25</button>
+                    </div>
+                </div>
+                <label class="check-row" for="check-rotulos">
+                    <input type="checkbox" id="check-rotulos" checked>
+                    <span>Mostrar λ, A, crestas y valles</span>
+                </label>
+                <p class="field-hint" data-i18n="ayuda-marcar">Pulsa una partícula del medio para marcarla (P) y seguir su movimiento.</p>
+            </section>
+
+            <hr class="divider">
+
+            <!-- NIVEL BACHILLERATO -->
+            <section class="control-group">
+                <h2>Bachillerato</h2>
+                <label class="check-row" for="check-bach">
+                    <input type="checkbox" id="check-bach">
+                    <span>Ver la ecuación, las gráficas y la fase</span>
+                </label>
+
+                <div class="input-wrapper only-bach">
+                    <div class="label-container">
+                        <label for="slider-dx">Distancia de P a Q (Δx)</label>
+                        <span id="val-dx" class="value-badge">0,75 m</span>
+                    </div>
+                    <input type="range" id="slider-dx" min="0" max="3" value="0.75" step="0.05">
+                    <div class="slider-bounds"><span>0 m</span><span>3 m</span></div>
+                </div>
+                <div class="btn-row btn-row-3 only-bach">
+                    <button type="button" class="ctrl-btn dx-btn" data-frac="0.25">Δx = λ/4</button>
+                    <button type="button" class="ctrl-btn dx-btn" data-frac="0.5">Δx = λ/2</button>
+                    <button type="button" class="ctrl-btn dx-btn" data-frac="1">Δx = λ</button>
+                </div>
+            </section>
+
+            <hr class="divider">
+
+            <!-- MEDIDAS (plegable) -->
+            <details class="custom-details" open>
+                <summary>Medidas de la onda</summary>
+                <div class="details-content metrics-content">
+
+                    <div class="metrics-grid">
+                        <div class="card card-data">
+                            <h3><span class="dot c-a"></span>Amplitud</h3>
+                            <div class="metric"><span id="metric-a" class="c-a">0,20</span><small>m</small></div>
+                        </div>
+                        <div class="card card-data">
+                            <h3><span class="dot c-f"></span>Frecuencia</h3>
+                            <div class="metric"><span id="metric-f" class="c-f">1,00</span><small>Hz</small></div>
+                        </div>
+                        <div class="card card-data">
+                            <h3><span class="dot c-t"></span>Período</h3>
+                            <div class="metric"><span id="metric-t" class="c-t">1,00</span><small>s</small></div>
+                        </div>
+                        <div class="card card-data">
+                            <h3><span class="dot c-l"></span>Long. de onda</h3>
+                            <div class="metric"><span id="metric-l" class="c-l">1,50</span><small>m</small></div>
+                        </div>
+                        <div class="card card-data">
+                            <h3><span class="dot c-v"></span>Velocidad</h3>
+                            <div class="metric"><span id="metric-v" class="c-v">1,50</span><small>m/s</small></div>
+                        </div>
+                        <div class="card card-data">
+                            <h3><span class="dot c-e"></span>Energía</h3>
+                            <div class="metric"><span id="metric-e" class="c-e">1,0</span><small>× E₀</small></div>
+                        </div>
+                    </div>
+                    <p id="wave-note" class="table-note">—</p>
+
+                    <div class="card card-estado only-bach">
+                        <p class="table-title">Ecuación y fase</p>
+                        <p id="bach-eq" class="eq-line">—</p>
+                        <table class="data-table">
+                            <tbody id="bach-table"></tbody>
+                        </table>
+                        <p id="phase-note" class="table-note">—</p>
+                    </div>
+                </div>
+            </details>
+
+            <!-- FÓRMULAS -->
+            <details class="custom-details">
+                <summary>Fórmulas esenciales</summary>
+                <div class="details-content">
+                    <div class="card edu-card">
+                        <div class="formula-list">
+                            <div class="formula">
+                                <span class="formula-name">Período:</span>
+                                <span class="formula-eq">T = 1 / f</span>
+                            </div>
+                            <div class="formula">
+                                <span class="formula-name">Velocidad:</span>
+                                <span class="formula-eq">v = λ / T = λ · f</span>
+                            </div>
+                            <div class="formula">
+                                <span class="formula-name">Energía:</span>
+                                <span class="formula-eq" data-i18n="formula-energia">E ∝ A² · f² (al doble de amplitud, el cuádruple de energía)</span>
+                            </div>
+                            <div class="formula">
+                                <span class="formula-name">Unidades:</span>
+                                <span class="formula-eq" data-i18n="formula-unidades">A y λ en metros, T en segundos, f en hercios (Hz = 1/s), v en m/s</span>
+                            </div>
+                            <div class="formula only-bach">
+                                <span class="formula-name">Ecuación:</span>
+                                <span class="formula-eq">y(x, t) = A · sen(ωt − kx)</span>
+                            </div>
+                            <div class="formula only-bach">
+                                <span class="formula-name">Pulsación:</span>
+                                <span class="formula-eq">ω = 2π f = 2π / T</span>
+                            </div>
+                            <div class="formula only-bach">
+                                <span class="formula-name">N.º de onda:</span>
+                                <span class="formula-eq">k = 2π / λ ; v = ω / k</span>
+                            </div>
+                            <div class="formula only-bach">
+                                <span class="formula-name">Vibración:</span>
+                                <span class="formula-eq">v<sub>y</sub> = A ω · cos(ωt − kx)</span>
+                            </div>
+                            <div class="formula only-bach">
+                                <span class="formula-name">Fase:</span>
+                                <span class="formula-eq">Δφ = k · Δx = 2π · Δx / λ</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card edu-card">
+                        <p class="table-title">Ejemplos</p>
+                        <p class="section-note" data-i18n="ejemplos-transversales"><b>Transversales:</b> una cuerda de guitarra, la luz y las demás ondas electromagnéticas, las ondas S de los terremotos.</p>
+                        <p class="section-note" data-i18n="ejemplos-longitudinales"><b>Longitudinales:</b> el sonido, un muelle que se comprime y se estira, las ondas P de los terremotos.</p>
+                    </div>
+                </div>
+            </details>
+
+        </aside>
+
+        <!-- ── PANEL DE SIMULACIÓN ───────────────────────────────── -->
+        <main class="simulation-panel">
+
+            <div class="canvas-toolbar">
+                <button id="btn-pausa" type="button" class="canvas-btn" aria-pressed="false">⏸ Pausar</button>
+                <button id="btn-reiniciar" type="button" class="canvas-btn">↺ Reiniciar</button>
+            </div>
+            <!-- Botón de tema -->
+            <button id="theme-btn" class="theme-btn" title="Cambiar tema" aria-label="Cambiar tema" aria-expanded="false">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58
+                    c0.18-0.14,0.23-0.41,0.12-0.61l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96
+                    c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41h-3.84
+                    c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33
+                    c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58
+                    C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58c-0.18,0.14-0.23,0.41-0.12,0.61
+                    l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94
+                    l0.36,2.54c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54
+                    c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32
+                    c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z
+                    M12,15.6c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+                </svg>
+            </button>
+            <div id="theme-panel" class="theme-panel" aria-hidden="true">
+                <p class="theme-panel-title">Tema visual</p>
+                <div class="theme-options">
+                    <button class="theme-opt active" data-theme="dark">
+                        <span class="theme-swatch dark-swatch"></span>Oscuro
+                    </button>
+                    <button class="theme-opt" data-theme="light">
+                        <span class="theme-swatch light-swatch"></span>Claro
+                    </button>
+                    <button class="theme-opt" data-theme="contrast">
+                        <span class="theme-swatch contrast-swatch"></span>Alto contraste
+                    </button>
+                </div>
+            </div>
+
+            <div id="canvas-container"></div>
+            <div id="anuncio" class="sr-only" aria-live="polite"></div>
+        </main>
+
+    </div>
+    <script src="js/wave.js"></script>
+    <script src="js/sketch.js"></script>
+</body>
+</html>
