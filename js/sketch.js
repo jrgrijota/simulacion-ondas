@@ -106,6 +106,23 @@ function setup() {
     setupThemePanel();
     readControls();
     fitCanvas();
+
+    // Simulación ya preparada desde la dirección (js/parametros.js),
+    // p. ej. ?modo=longitudinal&f=0.5&v=2 o ?onda=pulso&bach=si
+    aplicarParametrosUrl({
+        modo:      (v) => { if (['transversal', 'longitudinal', 'comparar'].includes(v)) setMode(v); },
+        onda:      urlParam.select('wave-kind'),                              // continua | pulso
+        amplitud:  urlParam.range('slider-a'),                                // m
+        f:         urlParam.range('slider-f'),                                // Hz
+        v:         urlParam.range('slider-v'),                                // m/s
+        ritmo:     (v) => {
+            const b = document.querySelector(`.speed-btn[data-speed="${{ '1': '1', '0.5': '0.5', '0,5': '0.5', '0.25': '0.25', '0,25': '0.25' }[v]}"]`);
+            if (b) b.click();
+        },
+        rotulos:   urlParam.toggle('check-rotulos', (el) => el.checked),
+        bach:      urlParam.toggle('check-bach', (el) => el.checked),
+        dx:        urlParam.range('slider-dx'),                               // m
+    });
 }
 
 function setupThemePanel() {
