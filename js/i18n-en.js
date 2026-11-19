@@ -2,7 +2,7 @@
 // Las usa js/i18n.js cuando la página se abre con ?lang=en.
 window.I18N_EN = {
     // ── Cabecera ──
-    "Ondas — Simulación Interactiva": "Waves — Interactive Simulation",
+    "Ondas — Simulación interactiva": "Waves — Interactive simulation",
     "Ondas": "Waves",
     "Transversales y longitudinales": "Transverse and longitudinal",
     "Descripción y reglas rápidas": "Description and quick rules",
