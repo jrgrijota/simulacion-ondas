@@ -1,4 +1,4 @@
-# Ondas — Simulación Interactiva
+# Ondas — Simulación interactiva
 
 Simulación para **Física y Química de 4.º ESO** y **Física de 2.º de Bachillerato** sobre ondas
 mecánicas: la diferencia entre ondas transversales y longitudinales, las magnitudes que las

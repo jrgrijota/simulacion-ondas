@@ -2,7 +2,7 @@
 // Las usa js/i18n.js cuando la página se abre con ?lang=eu.
 window.I18N_EU = {
     // ── Cabecera ──
-    "Ondas — Simulación Interactiva": "Uhinak — Simulazio interaktiboa",
+    "Ondas — Simulación interactiva": "Uhinak — Simulazio interaktiboa",
     "Ondas": "Uhinak",
     "Transversales y longitudinales": "Zeharkakoak eta luzetarakoak",
     "Descripción y reglas rápidas": "Deskribapena eta arau azkarrak",

@@ -1,0 +1,362 @@
+/* ════════════════════════════════════════════════════
+   ESTILO SIMULACIENCIA (el del juego «Carga cero»)
+   Capa encima de style.css, la misma que en Cambios de estado y Densidad:
+   temas Pizarra (Oscuro) y Día (Claro). Alto contraste no cambia.
+════════════════════════════════════════════════════ */
+@font-face {
+    font-family: 'Fredoka';
+    src: url('fonts/fredoka.woff2') format('woff2');
+    font-weight: 300 700;
+    font-display: swap;
+}
+
+body:not(.theme-contrast):not(.theme-marca) {
+    /* Pizarra: azules de SimulaCiencia, oscuro de tono medio para la pizarra digital */
+    --bg1: #0b2236;  --bg2: #154a70;
+    --panel: #15395a; --panel-2: #1d4a72; --hundido: #0e2b45;
+    --line: #2d6996;  --line-suave: #24577f;
+    --text: #eef7ff;  --muted: #b5d3ec; --title: #ffffff;
+    --accent: #00c8ff; --accent-ink: #04263d; --accent-suave: rgba(0,200,255,0.18);
+    --cyan: #00c8ff;
+    /* Magnitudes: el mismo tono de siempre, más luminoso para leerse sobre azul */
+    --c-a: #ff8f8f; --c-f: #d9a8ff; --c-t: #5ee89a; --c-l: #5ccfff; --c-v: #ffd84a; --c-e: #ffa25a;
+    --boton-sombra: #071a2b;
+    --shadow: 0 10px 28px rgba(3, 15, 28, 0.45);
+    --puntos: rgba(255,255,255,0.06);
+    --font-fun: 'Fredoka', 'Trebuchet MS', system-ui, sans-serif;
+}
+body.theme-light:not(.theme-marca) {
+    /* Día: claro pero no blanco, con el azul de la marca */
+    --bg1: #dde9f3;  --bg2: #eef5fb;
+    --panel: #f7fbff; --panel-2: #e4eff8; --hundido: #d3e2ef;
+    --line: #a9c6de;  --line-suave: #c6dbec;
+    --text: #13304a;  --muted: #3f5f7a; --title: #0b2236;
+    --accent: #0369a1; --accent-ink: #ffffff; --accent-suave: rgba(3,105,161,0.14);
+    --cyan: #0369a1;
+    --c-a: #b91c1c; --c-f: #7e22ce; --c-t: #11703a; --c-l: #0369a1; --c-v: #8a5300; --c-e: #b23c0a;
+    --boton-sombra: #a9c6de;
+    --shadow: 0 10px 24px rgba(11, 34, 54, 0.14);
+    --puntos: rgba(11,34,54,0.07);
+}
+
+/* ── Base ─────────────────────────────────────────── */
+body:not(.theme-contrast):not(.theme-marca) {
+    background: radial-gradient(ellipse at 60% 0%, var(--bg2) 0%, var(--bg1) 75%) fixed;
+    color: var(--text);
+    font-size: 14.5px;
+}
+body:not(.theme-contrast):not(.theme-marca) .control-panel {
+    background: transparent;
+    border-right: 0;
+    padding: 18px 16px 18px 20px;
+    gap: 12px;
+}
+body:not(.theme-contrast):not(.theme-marca) .control-panel::-webkit-scrollbar-thumb { background: var(--line); }
+body:not(.theme-contrast):not(.theme-marca) .control-panel::-webkit-scrollbar-track { background: transparent; }
+body:not(.theme-contrast):not(.theme-marca) .simulation-panel {
+    background: transparent;
+}
+body:not(.theme-contrast):not(.theme-marca) .simulation-panel::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background-image: radial-gradient(circle, var(--puntos) 1.5px, transparent 1.6px);
+    background-size: 28px 28px;
+}
+
+/* ── Cabecera ─────────────────────────────────────── */
+body:not(.theme-contrast):not(.theme-marca) .header-top h1 {
+    font: 700 1.6rem/1.05 var(--font-fun);
+    color: var(--title);
+    letter-spacing: 0.2px;
+    text-shadow: 0 3px 0 var(--line);
+}
+body:not(.theme-contrast):not(.theme-marca) .header-icon-svg {
+    width: 48px; height: 48px;
+    background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 3px;
+    box-shadow: 0 4px 0 var(--boton-sombra);
+}
+body:not(.theme-contrast):not(.theme-marca) .subtitle {
+    font: 600 0.95rem var(--font-fun);
+    text-transform: none; letter-spacing: 0.3px;
+    color: var(--muted);
+}
+body:not(.theme-contrast):not(.theme-marca) .header-details summary {
+    font: 500 0.88rem var(--font-fun); color: var(--muted);
+}
+body:not(.theme-contrast):not(.theme-marca) .header-details summary::before { color: var(--accent); }
+
+/* ── Tarjetas: cada grupo del panel es una pieza redonda ── */
+body:not(.theme-contrast):not(.theme-marca) .divider { display: none; }
+body:not(.theme-contrast):not(.theme-marca) .control-group {
+    background: var(--panel);
+    border: 2px solid var(--line);
+    border-radius: 20px;
+    padding: 14px 16px;
+    box-shadow: var(--shadow);
+}
+body:not(.theme-contrast):not(.theme-marca) h2 {
+    font: 700 1.05rem var(--font-fun);
+    text-transform: none; letter-spacing: 0.2px;
+    color: var(--title);
+    display: flex; align-items: center; gap: 8px;
+}
+body:not(.theme-contrast):not(.theme-marca) h2::before {
+    content: ''; width: 10px; height: 10px; border-radius: 50%;
+    background: var(--muted); opacity: 0.8;
+    flex: none;
+}
+body:not(.theme-contrast):not(.theme-marca) label { color: var(--text); font-size: 0.9rem; }
+body:not(.theme-contrast):not(.theme-marca) .label-hint,
+body:not(.theme-contrast):not(.theme-marca) .field-hint,
+body:not(.theme-contrast):not(.theme-marca) .section-note,
+body:not(.theme-contrast):not(.theme-marca) .slider-bounds { color: var(--muted); }
+body:not(.theme-contrast):not(.theme-marca) .field-hint strong { color: var(--title); }
+
+/* ── Selector de modo: fichas grandes como las del menú del juego ── */
+body:not(.theme-contrast):not(.theme-marca) .mode-switch {
+    background: transparent; border: 0; padding: 0; gap: 10px;
+}
+body:not(.theme-contrast):not(.theme-marca) .mode-btn {
+    background: var(--panel-2);
+    border: 3px solid transparent;
+    border-radius: 18px;
+    padding: 10px 6px 9px;
+    color: var(--title);
+    font: 700 0.98rem var(--font-fun);
+    box-shadow: 0 4px 0 var(--boton-sombra);
+    transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+body:not(.theme-contrast):not(.theme-marca) .mode-btn:hover { transform: translateY(-2px); }
+body:not(.theme-contrast):not(.theme-marca) .mode-btn .mode-sub {
+    font: 500 0.72rem var(--font-fun); text-transform: none; letter-spacing: 0.2px; color: var(--muted);
+}
+body:not(.theme-contrast):not(.theme-marca) .mode-btn.active {
+    background: var(--panel); border-color: var(--accent); color: var(--title);
+}
+body:not(.theme-contrast):not(.theme-marca) .mode-btn.active .mode-sub { color: var(--muted); }
+
+/* ── Campos ───────────────────────────────────────── */
+body:not(.theme-contrast):not(.theme-marca) .custom-select {
+    background-color: var(--panel-2); border: 2px solid var(--line); color: var(--title);
+    border-radius: 999px; padding: 9px 16px;
+    font: 600 0.98rem var(--font-fun);
+}
+body:not(.theme-contrast):not(.theme-marca) .custom-select:hover { border-color: var(--accent); }
+body:not(.theme-contrast):not(.theme-marca) .custom-select option { background: var(--panel); color: var(--text); }
+body:not(.theme-contrast):not(.theme-marca) .value-badge {
+    background: var(--accent); color: var(--accent-ink);
+    border-radius: 999px; padding: 2px 10px;
+    font: 700 0.92rem var(--font-fun);
+}
+body:not(.theme-contrast):not(.theme-marca) input[type="range"] { height: 10px; }
+body:not(.theme-contrast):not(.theme-marca) input[type="range"]::-webkit-slider-thumb {
+    width: 24px; height: 24px; background: var(--accent);
+    border: 3px solid var(--panel); box-shadow: 0 3px 0 var(--boton-sombra);
+}
+body:not(.theme-contrast):not(.theme-marca) input[type="range"]::-moz-range-thumb {
+    width: 20px; height: 20px; background: var(--accent); border: 3px solid var(--panel);
+}
+body:not(.theme-contrast):not(.theme-marca) .check-row { font-size: 0.9rem; }
+body:not(.theme-contrast):not(.theme-marca) .check-row input[type="checkbox"] {
+    width: 20px; height: 20px; accent-color: var(--accent);
+}
+
+/* ── Métricas: fichas con número grande ───────────── */
+body:not(.theme-contrast):not(.theme-marca) .custom-details {
+    background: var(--panel); border: 2px solid var(--line); border-radius: 20px;
+    box-shadow: var(--shadow);
+}
+body:not(.theme-contrast):not(.theme-marca) .custom-details summary {
+    font: 700 1.02rem var(--font-fun); text-transform: none; letter-spacing: 0.2px;
+    color: var(--title); padding: 13px 16px;
+}
+body:not(.theme-contrast):not(.theme-marca) .custom-details summary::after { color: var(--accent); }
+body:not(.theme-contrast):not(.theme-marca) .details-content {
+    background: transparent; border-top: 2px dashed var(--line-suave);
+}
+body:not(.theme-contrast):not(.theme-marca) .card,
+body:not(.theme-contrast):not(.theme-marca) .card.card-data {
+    background: var(--panel-2); border: 0; border-radius: 16px;
+    box-shadow: inset 0 -4px 0 rgba(0,0,0,0.12);
+}
+body:not(.theme-contrast):not(.theme-marca) .card.card-estado {
+    background: var(--panel-2); border: 2px solid var(--line); border-left-width: 2px; margin-top: 10px;
+}
+body:not(.theme-contrast):not(.theme-marca) .card h3 {
+    font: 600 0.78rem var(--font-fun); text-transform: none; letter-spacing: 0.2px; color: var(--muted);
+}
+body:not(.theme-contrast):not(.theme-marca) .metric {
+    font: 700 1.55rem/1.05 var(--font-fun); color: var(--title);
+    font-variant-numeric: tabular-nums;
+}
+body:not(.theme-contrast):not(.theme-marca) .metric small { color: var(--muted); font-size: 0.8rem; font-weight: 500; }
+body:not(.theme-contrast):not(.theme-marca) .formula { font-family: var(--font-fun); border-bottom: 2px dashed var(--line-suave); }
+body:not(.theme-contrast):not(.theme-marca) .formula-name { color: var(--muted); }
+body:not(.theme-contrast):not(.theme-marca) .formula-eq { color: var(--title); }
+body:not(.theme-contrast):not(.theme-marca) .quick-rule span { font-family: var(--font-fun); font-size: 0.82rem; border-radius: 999px; padding: 3px 12px; }
+
+body:not(.theme-contrast):not(.theme-marca) .canvas-btn {
+    background: var(--panel); border: 2px solid var(--line); color: var(--title);
+    border-radius: 999px; min-height: 44px; padding: 8px 20px;
+    font: 600 1rem var(--font-fun); letter-spacing: 0.2px;
+    box-shadow: 0 4px 0 var(--boton-sombra);
+    transition: transform 0.12s, box-shadow 0.12s, border-color 0.15s;
+}
+body:not(.theme-contrast):not(.theme-marca) .canvas-btn:hover { transform: translateY(-2px); border-color: var(--accent); background: var(--panel); color: var(--title); }
+body:not(.theme-contrast):not(.theme-marca) .canvas-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--boton-sombra); }
+body:not(.theme-contrast):not(.theme-marca) .canvas-btn.active,
+body:not(.theme-contrast):not(.theme-marca) .canvas-btn[aria-pressed="true"] {
+    background: var(--accent); border-color: var(--accent); color: var(--accent-ink); box-shadow: 0 4px 0 var(--boton-sombra);
+}
+
+/* ── Lienzo: tablero redondeado ───────────────────── */
+/* El marco del tablero lo dibuja el propio lienzo (escala con él y no choca con
+   los tableros internos en el móvil); aquí solo una sombra suave. */
+body:not(.theme-contrast):not(.theme-marca) #canvas-container canvas {
+    border-radius: 0; box-shadow: none;
+}
+body.theme-light:not(.theme-marca) #canvas-container canvas {
+}
+
+/* ── Botón y panel de tema ────────────────────────── */
+body:not(.theme-contrast):not(.theme-marca) .theme-btn {
+    width: 42px; height: 42px; background: var(--panel); border: 2px solid var(--line); color: var(--title);
+    box-shadow: 0 4px 0 var(--boton-sombra);
+}
+body:not(.theme-contrast):not(.theme-marca) .theme-btn:hover,
+body:not(.theme-contrast):not(.theme-marca) .theme-btn.active { border-color: var(--accent); color: var(--accent); background: var(--panel); }
+body:not(.theme-contrast):not(.theme-marca) .theme-panel {
+    background: var(--panel); border: 2px solid var(--line); border-radius: 18px; box-shadow: var(--shadow);
+}
+body:not(.theme-contrast):not(.theme-marca) .theme-panel-title { font: 600 0.85rem var(--font-fun); color: var(--muted); text-transform: none; letter-spacing: 0.2px; }
+body:not(.theme-contrast):not(.theme-marca) .theme-opt {
+    border: 2px solid transparent; border-radius: 12px; color: var(--text);
+    font: 600 0.92rem var(--font-fun); min-height: 38px;
+}
+body:not(.theme-contrast):not(.theme-marca) .theme-opt:hover { background: var(--panel-2); border-color: var(--line); color: var(--title); }
+body:not(.theme-contrast):not(.theme-marca) .theme-opt.active { background: transparent; border-color: var(--accent); color: var(--title); }
+.dark-swatch  { background: linear-gradient(135deg, #154a70 50%, #00c8ff 50%) !important; border: 0 !important; }
+.light-swatch { background: linear-gradient(135deg, #eef5fb 50%, #0369a1 50%) !important; border: 1px solid #a9c6de !important; }
+
+/* Foco visible del color de acento */
+body:not(.theme-contrast):not(.theme-marca) button:focus-visible,
+body:not(.theme-contrast):not(.theme-marca) select:focus-visible,
+body:not(.theme-contrast):not(.theme-marca) input:focus-visible,
+body:not(.theme-contrast):not(.theme-marca) summary:focus-visible {
+    outline: 3px solid var(--accent); outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body:not(.theme-contrast):not(.theme-marca) * { transition: none !important; }
+}
+
+/* Deslizadores normales: relleno del color de acento */
+body:not(.theme-contrast):not(.theme-marca) input[type="range"]:not(.power-slider) {
+    background: linear-gradient(to right, var(--accent) 0%, var(--accent) var(--fill, 40%), var(--hundido) var(--fill, 40%));
+    box-shadow: inset 0 0 0 2px var(--line-suave);
+}
+
+/* ── Pequeñas animaciones ─────────────────────────── */
+@keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
+body:not(.theme-contrast):not(.theme-marca) .mode-btn:active,
+body:not(.theme-contrast):not(.theme-marca) .ctrl-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--boton-sombra); }
+body:not(.theme-contrast):not(.theme-marca) .seg-btn:active { transform: scale(0.94); }
+body:not(.theme-contrast):not(.theme-marca) .seg-btn { transition: transform 0.1s, background 0.15s; }
+@keyframes aparece { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+body:not(.theme-contrast):not(.theme-marca) .control-group,
+body:not(.theme-contrast):not(.theme-marca) .custom-details { animation: aparece 0.4s ease both; }
+@media (prefers-reduced-motion: reduce) {
+    body:not(.theme-contrast):not(.theme-marca) .control-group,
+    body:not(.theme-contrast):not(.theme-marca) .custom-details { animation: none; }
+}
+
+/* ════════════════════════════════════════════════════
+   PROPIOS DE ONDAS
+════════════════════════════════════════════════════ */
+/* Colores de las magnitudes (los mismos que en el lienzo) */
+body:not(.theme-contrast):not(.theme-marca) .c-a { color: var(--c-a); }
+body:not(.theme-contrast):not(.theme-marca) .c-f { color: var(--c-f); }
+body:not(.theme-contrast):not(.theme-marca) .c-t { color: var(--c-t); }
+body:not(.theme-contrast):not(.theme-marca) .c-l { color: var(--c-l); }
+body:not(.theme-contrast):not(.theme-marca) .c-v { color: var(--c-v); }
+body:not(.theme-contrast):not(.theme-marca) .c-e { color: var(--c-e); }
+body:not(.theme-contrast):not(.theme-marca) .dot.c-a { background: var(--c-a); }
+body:not(.theme-contrast):not(.theme-marca) .dot.c-f { background: var(--c-f); }
+body:not(.theme-contrast):not(.theme-marca) .dot.c-t { background: var(--c-t); }
+body:not(.theme-contrast):not(.theme-marca) .dot.c-l { background: var(--c-l); }
+body:not(.theme-contrast):not(.theme-marca) .dot.c-v { background: var(--c-v); }
+body:not(.theme-contrast):not(.theme-marca) .dot.c-e { background: var(--c-e); }
+body:not(.theme-contrast):not(.theme-marca) .card.card-data h3 .dot { width: 9px; height: 9px; }
+body:not(.theme-contrast):not(.theme-marca) .metrics-grid { gap: 8px; }
+
+/* Reglas rápidas de la cabecera: fichas redondas */
+body:not(.theme-contrast):not(.theme-marca) .qr-a { color: var(--title); background: var(--panel-2); border: 2px solid var(--c-l); }
+body:not(.theme-contrast):not(.theme-marca) .qr-b { color: var(--title); background: var(--panel-2); border: 2px solid var(--c-t); }
+body:not(.theme-contrast):not(.theme-marca) .qr-c { color: var(--title); background: var(--panel-2); border: 2px solid var(--c-e); border-radius: 16px; }
+
+/* Velocidad de la simulación: píldora segmentada */
+body:not(.theme-contrast):not(.theme-marca) .seg-control {
+    background: var(--hundido); border: 2px solid var(--line); border-radius: 999px; padding: 4px; gap: 4px;
+}
+body:not(.theme-contrast):not(.theme-marca) .seg-btn {
+    color: var(--text); border: 2px solid transparent; border-radius: 999px;
+    font: 700 0.98rem var(--font-fun); min-height: 36px;
+}
+body:not(.theme-contrast):not(.theme-marca) .seg-btn:hover { background: var(--panel-2); color: var(--title); }
+body:not(.theme-contrast):not(.theme-marca) .seg-btn.active {
+    background: var(--accent); border-color: var(--accent); color: var(--accent-ink);
+    box-shadow: 0 3px 0 var(--boton-sombra);
+}
+
+/* Botones del panel (emitir pulso, Δx = λ/2…) */
+body:not(.theme-contrast):not(.theme-marca) .ctrl-btn {
+    background: var(--panel-2); border: 2px solid var(--line); color: var(--title);
+    border-radius: 999px; min-height: 40px;
+    font: 700 0.95rem var(--font-fun);
+    box-shadow: 0 4px 0 var(--boton-sombra);
+    transition: transform 0.12s, box-shadow 0.12s, border-color 0.15s;
+}
+body:not(.theme-contrast):not(.theme-marca) .ctrl-btn:hover { border-color: var(--accent); transform: translateY(-2px); background: var(--panel-2); color: var(--title); }
+body:not(.theme-contrast):not(.theme-marca) .ctrl-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+body:not(.theme-contrast):not(.theme-marca) .ctrl-btn.primary:hover { background: var(--accent); color: var(--accent-ink); }
+body:not(.theme-contrast):not(.theme-marca) .btn-row { gap: 9px; }
+body:not(.theme-contrast):not(.theme-marca) .btn-row-3 .ctrl-btn { font: 700 0.9rem var(--font-fun); padding: 7px 4px; }
+
+/* Bachillerato: ecuación, tabla y notas */
+body:not(.theme-contrast):not(.theme-marca) .table-title {
+    font: 700 0.95rem var(--font-fun); text-transform: none; letter-spacing: 0.2px; color: var(--title);
+}
+body:not(.theme-contrast):not(.theme-marca) .eq-line {
+    font: 700 1.02rem var(--font-fun); color: var(--title);
+    background: var(--hundido); border-radius: 12px; padding: 8px 12px;
+}
+body:not(.theme-contrast):not(.theme-marca) .data-table { font-size: 0.82rem; }
+body:not(.theme-contrast):not(.theme-marca) .data-table td { color: var(--text); border-bottom: 2px dashed var(--line-suave); }
+body:not(.theme-contrast):not(.theme-marca) #bach-table td:first-child { color: var(--muted); font-family: var(--font-fun); }
+body:not(.theme-contrast):not(.theme-marca) .table-note { color: var(--text); font-size: 0.86rem; line-height: 1.45; }
+body:not(.theme-contrast):not(.theme-marca) .table-note b { color: var(--title); }
+body:not(.theme-contrast):not(.theme-marca) .label-hint { color: var(--muted); }
+body:not(.theme-contrast):not(.theme-marca) .edu-card .section-note b { color: var(--title); font-family: var(--font-fun); }
+
+/* Pausa y reinicio, arriba a la derecha, con hueco para su relieve */
+body:not(.theme-contrast):not(.theme-marca) .canvas-toolbar { top: 16px; right: 20px; gap: 10px; }
+body:not(.theme-contrast):not(.theme-marca) #canvas-container { padding-top: 72px; }
+@media (max-width: 1100px) {
+    body:not(.theme-contrast):not(.theme-marca) #canvas-container { padding: 70px 10px 66px; }
+}
+body:not(.theme-contrast):not(.theme-marca) .metric small { margin-left: 3px; }
+
+/* En el ordenador, el engranaje del tema va arriba, junto a Pausar y Reiniciar,
+   para no tapar el marco del lienzo; su panel se abre hacia abajo. */
+@media (min-width: 1101px) {
+    body:not(.theme-contrast):not(.theme-marca) .theme-btn { top: 17px; bottom: auto; right: 20px; }
+    body:not(.theme-contrast):not(.theme-marca) .theme-panel { top: 70px; bottom: auto; right: 20px; }
+    body:not(.theme-contrast):not(.theme-marca) .canvas-toolbar { right: 74px; }
+}
+/* En el móvil, botones algo más pequeños para que quepan junto al sello */
+@media (max-width: 500px) {
+    body:not(.theme-contrast):not(.theme-marca) .canvas-btn { padding: 6px 14px; min-height: 40px; font-size: 0.92rem; }
+    body:not(.theme-contrast):not(.theme-marca) .canvas-toolbar { right: 12px; gap: 8px; }
+}
+/* Cifras de las medidas más grandes: dos por fila para que quepan los nombres */
+body:not(.theme-contrast):not(.theme-marca) .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+body:not(.theme-contrast):not(.theme-marca) .data-table { font-family: var(--font-fun); font-size: 0.86rem; }

@@ -23,7 +23,12 @@ let dxPQ = 0.75;                   // distancia de P a Q (m), nivel Bachillerato
 let THEME = {};
 
 // --- LAYOUT DEL CANVAS ---
-const CV_W = 1050, CV_H = 700;
+const CV_W = 1050;
+let CV_H = 700;
+// En el estilo SimulaCiencia (temas Pizarra y Día) hay una franja arriba para la
+// mascota y su bocadillo: el lienzo crece hacia abajo y la escena baja con él.
+const FRANJA = 58;
+const BANNER = { x: 16, y: 14, w: 1018, h: 46 };
 const SCENE = { x: 16, y: 16, w: 1018, h: 430 };
 const LOWER = { x: 16, y: 462, w: 1018, h: 222 };
 const X0 = SCENE.x + 150;          // posición del foco (x = 0) en píxeles
@@ -39,6 +44,9 @@ let panelTimer = 0;
 
 // ─────────────────────────────────────────────────────────────────
 function setup() {
+    if (document.fonts) document.fonts.load('600 12px Fredoka');
+    // Doble resolución: en la pizarra digital el lienzo se amplía sin verse borroso
+    pixelDensity(Math.max(2, displayDensity()));
     const canvas = createCanvas(CV_W, CV_H);
     canvas.parent('canvas-container');
     canvas.elt.setAttribute('aria-label', i18n.t('Simulación de ondas: un foco hace vibrar una cuerda o un muelle y la onda avanza hacia la derecha. Los cambios importantes se leen en voz alta.'));
@@ -210,7 +218,18 @@ function setSliderFill(slider, minV, maxV) {
 // ─────────────────────────────────────────────────────────────────
 function draw() {
     updateTheme();
-    background(THEME.canvasBg);
+    aplicarLayout();
+    if (THEME.fun) {
+        // El marco exterior se dibuja dentro del lienzo: así encoge con él y nunca
+        // choca con los tableros (en el móvil el lienzo se reduce mucho).
+        clear();
+        stroke(THEME.panelBorder); strokeWeight(2); fill(THEME.canvasBg);
+        rect(1, 1, CV_W - 2, CV_H - 2, 34);
+        textFont('Fredoka');
+    } else {
+        background(THEME.canvasBg);
+        textFont('monospace');
+    }
     const dt = Math.min(deltaTime / 1000, 1 / 20);
     if (playing) {
         const before = wave.frontX();
@@ -220,6 +239,7 @@ function draw() {
         }
     }
 
+    if (THEME.fun) drawBocadillo();
     drawScene();
     drawBottomPanel();
     cursor(laneAt(mouseX, mouseY) ? HAND : ARROW);
@@ -249,6 +269,18 @@ function fitCanvas() {
 
 function windowResized() { fitCanvas(); }
 
+// Coloca la escena y el panel inferior según haya o no franja de la mascota.
+function aplicarLayout() {
+    const off = THEME.fun ? FRANJA : 0;
+    SCENE.y = 16 + off;
+    LOWER.y = 462 + off;
+    if (CV_H !== 700 + off) {
+        CV_H = 700 + off;
+        resizeCanvas(CV_W, CV_H);
+        fitCanvas();
+    }
+}
+
 // Los lectores de pantalla leen los cambios importantes (no cada fotograma).
 let ultimoAnuncio = '';
 function anunciar(msg) {
@@ -258,20 +290,179 @@ function anunciar(msg) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+//  ESTILO SIMULACIENCIA: TARJETAS, MASCOTA Y CHISPAS
+//  (el mismo que en Cambios de estado y Densidad; solo en Pizarra y Día)
+// ═══════════════════════════════════════════════════════════════════
+const MOV_REDUCIDO = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FUENTE_TEXTO = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+let claveMascota = '', desdeMascota = -1e9, chispas = [];
+let notaFase = { clave: '', txt: '' };   // lo que dice la mascota en Bachillerato
+
+// Títulos en tipo frase («Onda transversal en una cuerda»); P y Q siguen en mayúscula.
+function frase(t) {
+    if (!THEME.fun) return t;
+    const l = t.toLocaleLowerCase().replace(/(^|[^\p{L}])([pq])(?![\p{L}])/gu, (m, a, b) => a + b.toUpperCase());
+    return l.charAt(0).toLocaleUpperCase() + l.slice(1);
+}
+
+// Tamaño de letra (≤ base) para que todos los textos quepan en el ancho dado.
+function ajustar(textos, ancho, base) {
+    textSize(base);
+    const w = Math.max(...textos.map(t => textWidth(t)));
+    return w > ancho ? Math.max(9, base * ancho / w) : base;
+}
+
+// Tarjeta redondeada con borde y sombra sólida de tinta
+function tarjeta(x, y, w, h, r, relleno) {
+    noStroke(); fill(THEME.ink); rect(x, y + 4, w, h, r);
+    stroke(THEME.panelBorder); strokeWeight(2); fill(relleno);
+    rect(x, y, w, h, r);
+    noStroke();
+}
+
+function salto(t0) {
+    if (MOV_REDUCIDO) return 1;
+    const e = (millis() - t0) / 450;
+    if (e >= 1) return 1;
+    return 1 + 0.35 * sin(e * PI) * (1 - e);
+}
+
+function lanzarChispas(x, y, col, n) {
+    if (MOV_REDUCIDO) return;
+    for (let i = 0; i < n; i++) {
+        const a = random(TWO_PI), v = random(1.5, 4);
+        chispas.push({ x, y, vx: cos(a) * v, vy: sin(a) * v - 1, vida: 1, col, r: random(3, 6), estrella: random() < 0.5 });
+    }
+}
+
+function drawChispas() {
+    // Las chispas no salen de la zona de la mascota: nunca tapan texto
+    drawingContext.save();
+    drawingContext.beginPath();
+    drawingContext.rect(BANNER.x, BANNER.y - 6, 120, BANNER.h + 12);
+    drawingContext.clip();
+    for (let i = chispas.length - 1; i >= 0; i--) {
+        const c = chispas[i];
+        c.x += c.vx; c.y += c.vy; c.vy += 0.12; c.vida -= 0.04;
+        if (c.vida <= 0) { chispas.splice(i, 1); continue; }
+        const col = color(c.col); col.setAlpha(255 * c.vida);
+        noStroke(); fill(col);
+        if (c.estrella) estrella(c.x, c.y, c.r * 1.3, c.r * 0.5);
+        else circle(c.x, c.y, c.r * 2 * c.vida);
+    }
+    drawingContext.restore();
+}
+
+function estrella(x, y, r1, r2) {
+    beginShape();
+    for (let i = 0; i < 10; i++) {
+        const a = -HALF_PI + i * PI / 5, r = i % 2 ? r2 : r1;
+        vertex(x + cos(a) * r, y + sin(a) * r);
+    }
+    endShape(CLOSE);
+}
+
+// Mascota: una partícula sonriente que dice el mensaje en un bocadillo.
+function drawMascota(cx, cy, r, col) {
+    const bote = MOV_REDUCIDO ? 0 : sin(millis() / 260) * 1.5;
+    const parpadeo = millis() % 4200 > 4050;
+    push();
+    translate(cx, cy + bote);
+    const s = salto(desdeMascota);
+    scale(s, 2 - s);
+    noStroke(); fill(0, 0, 0, 45); ellipse(0, r + 3 - bote, r * 1.5, 5);
+    stroke(THEME.ink); strokeWeight(2.5); fill(col);
+    circle(0, 0, r * 2);
+    noStroke(); fill(255, 255, 255, 150);
+    ellipse(-r * 0.42, -r * 0.45, r * 0.55, r * 0.35);
+    fill(THEME.ink);
+    if (parpadeo) { stroke(THEME.ink); strokeWeight(2); line(-r * 0.42, -r * 0.05, -r * 0.18, -r * 0.05); line(r * 0.18, -r * 0.05, r * 0.42, -r * 0.05); }
+    else { ellipse(-r * 0.3, -r * 0.08, r * 0.2, r * 0.3); ellipse(r * 0.3, -r * 0.08, r * 0.2, r * 0.3); }
+    noFill(); stroke(THEME.ink); strokeWeight(2.2);
+    arc(0, r * 0.18, r * 0.6, r * 0.45, 0.15 * PI, 0.85 * PI);
+    noStroke(); fill(255, 120, 150, 120);
+    circle(-r * 0.58, r * 0.22, r * 0.3); circle(r * 0.58, r * 0.22, r * 0.3);
+    pop();
+}
+
+// Lo que dice la mascota: qué vibra y hacia dónde en cada modo y, en
+// Bachillerato, cómo vibran P y Q (los mismos textos que ya tenía la simulación).
+function mensajeMascota() {
+    const tag = i18n.t({ transversal: 'Transversal', longitudinal: 'Longitudinal', comparar: 'Comparar' }[mode]);
+    const col = { transversal: THEME.l, longitudinal: THEME.e, comparar: THEME.v }[mode];
+    if (bach && notaFase.txt) return { clave: mode + '|' + notaFase.clave, tag, txt: notaFase.txt, col: THEME.q };
+    let txt;
+    if (mode === 'transversal') txt = i18n.t('Las partículas vibran en dirección perpendicular a la propagación');
+    else if (mode === 'longitudinal') txt = i18n.t('Las partículas vibran en la misma dirección en que se propaga la onda');
+    else {
+        txt = i18n.t('Comparación: arriba la onda transversal y abajo la longitudinal, con el mismo foco y el mismo medio.');
+        const dosPuntos = txt.indexOf(': ');
+        if (dosPuntos > 0 && dosPuntos < 20) txt = txt.slice(dosPuntos + 2);
+        txt = txt.charAt(0).toLocaleUpperCase() + txt.slice(1);
+    }
+    return { clave: mode, tag, txt, col };
+}
+
+// Franja superior: mascota + bocadillo con etiqueta y mensaje
+function drawBocadillo() {
+    const m = mensajeMascota();
+    const { x, y, w, h } = BANNER;
+    if (m.clave !== claveMascota) {
+        if (claveMascota) lanzarChispas(x + 24, y + h / 2, m.col, 12);
+        claveMascota = m.clave; desdeMascota = millis();
+    }
+    // En el tema Día los colores son oscuros (para leerse): la mascota, más clara
+    const cm = lightness(color(m.col)) > 55 ? color(m.col) : lerpColor(color(m.col), color(255), 0.45);
+    drawMascota(x + 24, y + h / 2, 20, cm);
+
+    const bx = x + 56, my = y + h / 2;
+    noStroke(); fill(THEME.ink); rect(bx, y + 3, w - 56, h, 16);
+    stroke(THEME.panelBorder); strokeWeight(2); fill(THEME.panelBg);
+    triangle(bx - 10, my, bx + 4, my - 8, bx + 4, my + 8);
+    rect(bx, y, w - 56, h, 16);
+    noStroke(); fill(THEME.panelBg);
+    triangle(bx - 7, my, bx + 3, my - 6, bx + 3, my + 6);
+
+    textStyle(BOLD); textSize(16);
+    const tw = textWidth(m.tag) + 26;
+    push();
+    translate(bx + 12 + tw / 2, my);
+    scale(salto(desdeMascota));
+    noStroke(); fill(THEME.ink); rect(-tw / 2, -12, tw, 28, 14);
+    fill(m.col); rect(-tw / 2, -14, tw, 28, 14);
+    fill(lightness(color(m.col)) > 55 ? THEME.ink : '#ffffff'); textAlign(CENTER, CENTER);
+    text(m.tag, 0, -1);
+    pop();
+    textStyle(NORMAL);
+
+    textFont(FUENTE_TEXTO);
+    const tx = bx + 12 + tw + 14, ancho = x + w - tx - 14;
+    fill(THEME.text); textAlign(LEFT, CENTER); textLeading(19);
+    // Una línea a 17 px si cabe; si no, dos líneas a 15 px
+    textSize(17);
+    if (textWidth(m.txt) > ancho) textSize(15);
+    text(m.txt, tx, y + 2, ancho, h - 4);
+    textFont('Fredoka');
+    drawChispas();
+}
+
+// ═══════════════════════════════════════════════════════════════════
 //  TEMAS DEL LIENZO
 // ═══════════════════════════════════════════════════════════════════
 function updateTheme() {
     const isLight    = document.body.classList.contains('theme-light');
     const isContrast = document.body.classList.contains('theme-contrast');
     if (isLight) {
+        // Día: claro sin llegar a blanco, con el azul de SimulaCiencia
         THEME = {
-            canvasBg: '#ccd6e8', sceneBg: '#e4ecf6', panelBg: '#b8c8dc', panelBorder: '#6888a0',
-            text: '#0d1520', textDim: '#3a4a5a', textFaint: '#5a6a7a', grid: color(30, 50, 80, 40),
-            rope: '#3a4858', bead: '#475569', particle: '#334155', axis: color(30, 50, 80, 110),
-            device: '#64748b', deviceFill: '#f4f7fb',
-            a: '#b91c1c', f: '#7e22ce', t: '#15803d', l: '#0369a1', v: '#a16207', e: '#c2410c',
-            p: '#dc2626', q: '#7c3aed', crest: '#0369a1', comp: color(3, 105, 161, 60), rare: color(194, 65, 12, 45),
-            front: '#a16207', msgBg: color(255, 255, 255, 220), warn: '#c02020',
+            canvasBg: '#eef5fb', sceneBg: '#f7fbff', panelBg: '#f7fbff', panelBorder: '#a9c6de',
+            text: '#13304a', textDim: '#3f5f7a', textFaint: '#4d6b85', grid: color(19, 48, 74, 30),
+            rope: '#13304a', bead: '#ffffff', particle: '#ffffff', axis: color(19, 48, 74, 110),
+            device: '#13304a', deviceFill: '#bfe3f7',
+            a: '#b91c1c', f: '#7e22ce', t: '#11703a', l: '#0369a1', v: '#8a5300', e: '#b23c0a',
+            p: '#c81e1e', q: '#6d28d9', crest: '#0369a1', comp: color(3, 105, 161, 75), rare: color(194, 65, 12, 55),
+            front: '#8a5300', msgBg: color(255, 255, 255, 235), warn: '#c0402a',
+            title: '#0b2236', ink: '#13304a', hundido: '#dbe8f3', fun: true,
         };
     } else if (isContrast) {
         THEME = {
@@ -284,14 +475,16 @@ function updateTheme() {
             front: '#ffff00', msgBg: color(0, 0, 0, 235), warn: '#ff4444',
         };
     } else {
+        // Pizarra: azules de SimulaCiencia, oscuro de tono medio para la pizarra digital
         THEME = {
-            canvasBg: '#141414', sceneBg: '#151c24', panelBg: '#141c24', panelBorder: '#22303c',
-            text: '#e0e8f0', textDim: '#8a9aaa', textFaint: '#5a6a7a', grid: color(255, 255, 255, 22),
-            rope: '#9aa8b8', bead: '#cbd5e1', particle: '#cbd5e1', axis: color(255, 255, 255, 60),
-            device: '#8a9aaa', deviceFill: '#1c2530',
-            a: '#f87171', f: '#c084fc', t: '#4ade80', l: '#38bdf8', v: '#facc15', e: '#fb923c',
-            p: '#f87171', q: '#c084fc', crest: '#38bdf8', comp: color(56, 189, 248, 70), rare: color(251, 146, 60, 45),
-            front: '#facc15', msgBg: color(10, 16, 24, 225), warn: '#ff6b6b',
+            canvasBg: '#11314f', sceneBg: '#0f2d49', panelBg: '#15395a', panelBorder: '#2d6996',
+            text: '#eef7ff', textDim: '#b5d3ec', textFaint: '#9cc0de', grid: color(255, 255, 255, 26),
+            rope: '#e6f4ff', bead: '#f4fbff', particle: '#f4fbff', axis: color(255, 255, 255, 80),
+            device: '#b5d3ec', deviceFill: '#2d6996',
+            a: '#ff8f8f', f: '#d9a8ff', t: '#5ee89a', l: '#5ccfff', v: '#ffd84a', e: '#ffa25a',
+            p: '#ff8f8f', q: '#d9a8ff', crest: '#5ccfff', comp: color(92, 207, 255, 110), rare: color(255, 162, 90, 80),
+            front: '#ffd84a', msgBg: color(11, 34, 54, 235), warn: '#ff8a6a',
+            title: '#ffffff', ink: '#071a2b', hundido: '#0b2236', fun: true,
         };
     }
 }
@@ -310,10 +503,13 @@ function lanes() {
 }
 
 function drawScene() {
-    fill(THEME.sceneBg);
-    stroke(THEME.panelBorder);
-    strokeWeight(1);
-    rect(SCENE.x, SCENE.y, SCENE.w, SCENE.h, 10);
+    if (THEME.fun) tarjeta(SCENE.x, SCENE.y, SCENE.w, SCENE.h, 20, THEME.sceneBg);
+    else {
+        fill(THEME.sceneBg);
+        stroke(THEME.panelBorder);
+        strokeWeight(1);
+        rect(SCENE.x, SCENE.y, SCENE.w, SCENE.h, 10);
+    }
 
     const L = lanes();
     drawingContext.save();
@@ -322,7 +518,9 @@ function drawScene() {
     drawingContext.clip();
     if (mode === 'comparar') {
         stroke(THEME.panelBorder);
+        if (THEME.fun) { strokeWeight(2); drawingContext.setLineDash([6, 6]); }
         line(SCENE.x + 12, SCENE.y + 216, SCENE.x + SCENE.w - 12, SCENE.y + 216);
+        drawingContext.setLineDash([]);
     }
     L.forEach(lane => {
         if (lane.kind === 'transversal') drawTransversal(lane);
@@ -338,6 +536,14 @@ function drawLaneTitle(lane) {
         ? i18n.t('Las partículas vibran en dirección perpendicular a la propagación')
         : i18n.t('Las partículas vibran en la misma dirección en que se propaga la onda');
     noStroke();
+    if (THEME.fun) {
+        // En tipo frase; la explicación la dice la mascota en su bocadillo
+        fill(THEME.textDim); circle(SCENE.x + 22, lane.top + 14, 8);
+        fill(THEME.title); textSize(15); textStyle(BOLD); textAlign(LEFT, CENTER);
+        text(frase(title), SCENE.x + 34, lane.top + 14);
+        textStyle(NORMAL);
+        return;
+    }
     fill(THEME.textDim);
     textSize(11);
     textStyle(BOLD);
@@ -352,25 +558,32 @@ function drawLaneTitle(lane) {
 
 // Flecha de la dirección de propagación, arriba a la derecha de cada carril.
 function drawPropagation(lane) {
-    const xe = SCENE.x + SCENE.w - 110, ay = lane.top + 13;
-    arrow(xe - 120, ay, xe, ay, THEME.v, 2, 8);
+    const g = THEME.fun;
+    const xe = SCENE.x + SCENE.w - (g ? 124 : 110), ay = lane.top + (g ? 14 : 13);
+    arrow(xe - 120, ay, xe, ay, THEME.v, g ? 3 : 2, g ? 11 : 8);
     noStroke();
     fill(THEME.v);
-    textSize(10.5);
+    textSize(g ? 14 : 10.5);
     textAlign(RIGHT, CENTER);
     text(i18n.t('propagación'), xe - 128, ay);
 }
 
 function drawClock() {
     noStroke();
-    textSize(11);
+    const g = THEME.fun;
+    textSize(g ? 17 : 11);
     textAlign(RIGHT, TOP);
-    fill(THEME.textDim);
+    fill(g ? THEME.title : THEME.textDim);
+    if (g) textStyle(BOLD);
     const tx = SCENE.x + SCENE.w - 16;
-    text(`t = ${fmt(wave.t, 1)} s`, tx, SCENE.y + 14);
+    text(`t = ${fmt(wave.t, 1)} s`, tx, SCENE.y + (g ? 8 : 14));
+    textStyle(NORMAL);
+    if (g) textSize(13);
     if (!playing) {
         fill(THEME.warn);
-        text(i18n.t('EN PAUSA'), tx, SCENE.y + 30);
+        if (g) textStyle(BOLD);
+        text(g ? frase(i18n.t('EN PAUSA')) : i18n.t('EN PAUSA'), tx, SCENE.y + (g ? 30 : 30));
+        textStyle(NORMAL);
     } else if (speed !== 1) {
         fill(THEME.textFaint);
         text(i18n.t('cámara lenta × {s}', { s: fmt(speed, 2).replace(/0$/, '') }), tx, SCENE.y + 30);
@@ -395,16 +608,29 @@ function dblArrow(x1, y1, x2, y2, col, w = 1.6, head = 6) {
 }
 
 // Cota horizontal con extremos verticales y rótulo centrado encima.
-function hDimension(xa, xb, y, col, label) {
+function hDimension(xa, xb, y, col, label, grande = true) {
+    const g = THEME.fun;
     stroke(col);
-    strokeWeight(1.3);
+    strokeWeight(g ? 2 : 1.3);
     line(xa, y - 6, xa, y + 6);
     line(xb, y - 6, xb, y + 6);
-    dblArrow(xa + 1, y, xb - 1, y, col, 1.3, 6);
+    dblArrow(xa + 1, y, xb - 1, y, col, g ? 2 : 1.3, g ? 8 : 6);
     noStroke();
+    textStyle(BOLD);
+    if (g) {
+        // λ es lo que se mide en clase: en grande, en una pastilla
+        textSize(grande ? 17 : 13);
+        const w = textWidth(label) + 18, h = grande ? 26 : 20;
+        fill(THEME.ink); rect((xa + xb) / 2 - w / 2, y - h / 2 + 2, w, h, h / 2);
+        stroke(col); strokeWeight(2); fill(THEME.sceneBg);
+        rect((xa + xb) / 2 - w / 2, y - h / 2, w, h, h / 2);
+        noStroke(); fill(col); textAlign(CENTER, CENTER);
+        text(label, (xa + xb) / 2, y - 1);
+        textStyle(NORMAL);
+        return;
+    }
     fill(THEME.sceneBg);
     textSize(11);
-    textStyle(BOLD);
     const w = textWidth(label) + 10;
     rect((xa + xb) / 2 - w / 2, y - 8, w, 16, 4);
     fill(col);
@@ -415,11 +641,13 @@ function hDimension(xa, xb, y, col, label) {
 
 function chip(x, y, label, col, alignX = CENTER) {
     noStroke();
-    textSize(10.5);
-    const w = textWidth(label) + 10;
+    const g = THEME.fun;
+    textSize(g ? 13 : 10.5);
+    const w = textWidth(label) + (g ? 16 : 10);
     const left = alignX === CENTER ? x - w / 2 : alignX === LEFT ? x : x - w;
     fill(THEME.msgBg);
-    rect(left, y - 8, w, 16, 4);
+    if (g) { stroke(col); strokeWeight(1.5); rect(left, y - 10, w, 20, 10); noStroke(); }
+    else rect(left, y - 8, w, 16, 4);
     fill(col);
     textAlign(CENTER, CENTER);
     text(label, left + w / 2, y);
@@ -468,25 +696,31 @@ function drawTransversal(lane) {
     const ys = wave.y(0);
     drawVibrator(X0 - 46, cy, ys, 'vertical');
 
-    // Cuerda
+    // Cuerda (en el estilo SimulaCiencia, con contorno de tinta)
     noFill();
-    stroke(THEME.rope);
-    strokeWeight(2);
-    beginShape();
-    for (let px = X0; px <= XP(L_MEDIO); px += 3) vertex(px, Y(wave.y((px - X0) / PX)));
-    endShape();
+    strokeJoin(ROUND); strokeCap(ROUND);
+    const capas = THEME.fun ? [[THEME.ink, 7], [THEME.rope, 3.5]] : [[THEME.rope, 2]];
+    for (const [col, peso] of capas) {
+        stroke(col);
+        strokeWeight(peso);
+        beginShape();
+        for (let px = X0; px <= XP(L_MEDIO); px += 3) vertex(px, Y(wave.y((px - X0) / PX)));
+        endShape();
+    }
 
     // Partículas de la cuerda
-    noStroke();
+    if (THEME.fun) { stroke(THEME.ink); strokeWeight(2); } else noStroke();
     fill(THEME.bead);
-    for (let x = 0; x <= L_MEDIO + 1e-9; x += STEP_T) circle(XP(x), Y(wave.y(x)), 6);
+    const dB = THEME.fun ? 10 : 6;
+    for (let x = 0; x <= L_MEDIO + 1e-9; x += STEP_T) circle(XP(x), Y(wave.y(x)), dB);
+    noStroke();
 
     // Frente de la onda continua
     const fr = wave.frontX();
     if (fr != null && fr < L_MEDIO - 0.02) {
         stroke(THEME.front);
-        strokeWeight(1);
-        drawingContext.setLineDash([2, 4]);
+        strokeWeight(THEME.fun ? 2 : 1);
+        drawingContext.setLineDash(THEME.fun ? [4, 5] : [2, 4]);
         line(XP(fr), cy - 70, XP(fr), cy + 70);
         drawingContext.setLineDash([]);
         chip(XP(fr), cy - 80, i18n.t('frente'), THEME.front);
@@ -521,13 +755,13 @@ function drawTransversal(lane) {
             drawingContext.setLineDash([2, 3]);
             line(XP(x1) + 4, ya, xa + 6, ya);
             drawingContext.setLineDash([]);
-            if (cy - ya > 12) dblArrow(xa, cy, xa, ya, THEME.a, 1.5, 6);
+            if (cy - ya > 12) dblArrow(xa, cy, xa, ya, THEME.a, THEME.fun ? 2.2 : 1.5, THEME.fun ? 8 : 6);
             noStroke();
             fill(THEME.a);
-            textSize(11);
+            textSize(THEME.fun ? 20 : 11);
             textStyle(BOLD);
             textAlign(LEFT, CENTER);
-            text('A', xa + 6, (cy + ya) / 2);
+            text('A', xa + (THEME.fun ? 8 : 6), (cy + ya) / 2);
             textStyle(NORMAL);
         }
     }
@@ -574,12 +808,14 @@ function drawLongitudinal(lane) {
     drawVibrator(X0 - 30, cy, wave.y(0) * s, 'horizontal', span);
 
     // Partículas
-    noStroke();
+    if (THEME.fun) { stroke(THEME.ink); strokeWeight(1.6); } else noStroke();
     fill(THEME.particle);
+    const dP = THEME.fun ? 8 : 5;
     for (let x = 0; x <= L_MEDIO + 1e-9; x += STEP_L) {
         const px = xs(x);
-        for (const ry of rowsY) circle(px, ry, 5);
+        for (const ry of rowsY) circle(px, ry, dP);
     }
+    noStroke();
 
     if (showLabels) {
         const ex = extrema(strain, xEnd, 0.05 / s);
@@ -600,7 +836,7 @@ function drawLongitudinal(lane) {
     if (s < 0.999) {
         noStroke();
         fill(THEME.textFaint);
-        textSize(9.5);
+        textSize(THEME.fun ? 11 : 9.5);
         textAlign(LEFT, BOTTOM);
         text(i18n.t('Desplazamientos dibujados a escala × {s} para que las partículas no se crucen', { s: fmt(s, 2) }),
              SCENE.x + 16, mode === 'comparar' ? SCENE.y + SCENE.h - 6 : lane.top + lane.h - 2);
@@ -616,34 +852,44 @@ function alphaOf(c) {
 
 // Vibrador del foco: un bloque fijo y una varilla que se mueve con el foco.
 function drawVibrator(x, cy, disp, dir, span = 60) {
-    stroke(THEME.device);
-    strokeWeight(1.4);
+    const g = THEME.fun;
+    stroke(g ? THEME.ink : THEME.device);
+    strokeWeight(g ? 2.5 : 1.4);
     fill(THEME.deviceFill);
+    strokeCap(ROUND);
     if (dir === 'vertical') {
-        rect(x - 26, cy - 22, 34, 44, 5);
+        rect(x - 26, cy - 22, 34, 44, g ? 9 : 5);
+        if (g) { noStroke(); fill(255, 255, 255, 110); rect(x - 21, cy - 17, 6, 22, 3); }
         const yy = cy - disp * PX;
+        if (g) { stroke(THEME.ink); strokeWeight(7); line(x + 8, yy, X0, yy); }
         stroke(THEME.device);
         strokeWeight(3);
         line(x + 8, yy, X0, yy);
-        noStroke();
+        if (g) { stroke(THEME.ink); strokeWeight(2); } else noStroke();
         fill(THEME.device);
         rect(x - 4, yy - 4, 14, 8, 2);
-        dblArrow(x - 9, cy - 14, x - 9, cy + 14, THEME.textFaint, 1.2, 4);
+        dblArrow(x - 9, cy - 14, x - 9, cy + 14, g ? THEME.ink : THEME.textFaint, 1.2, 4);
     } else {
-        rect(x - 104, cy - 22, 30, 44, 5);
+        rect(x - 104, cy - 22, 30, 44, g ? 9 : 5);
+        if (g) { noStroke(); fill(255, 255, 255, 110); rect(x - 99, cy - 17, 6, 22, 3); }
         const xx = x + disp * PX;
+        if (g) { stroke(THEME.ink); strokeWeight(7); line(x - 74, cy, xx, cy); strokeWeight(9); line(xx, cy - span - 6, xx, cy + span + 6); }
         stroke(THEME.device);
         strokeWeight(3);
         line(x - 74, cy, xx, cy);
         strokeWeight(5);
         line(xx, cy - span - 6, xx, cy + span + 6);
-        dblArrow(x - 99, cy, x - 79, cy, THEME.textFaint, 1.2, 4);
+        dblArrow(x - 99, cy, x - 79, cy, g ? THEME.ink : THEME.textFaint, 1.2, 4);
     }
     noStroke();
     fill(THEME.textFaint);
-    textSize(9.5);
+    textSize(g ? 13 : 9.5);
     textAlign(CENTER, TOP);
-    if (dir === 'vertical') {
+    if (dir === 'vertical' && g) {
+        // Debajo del vibrador: arriba lo tapaba la varilla al subir
+        textAlign(CENTER, TOP);
+        text(i18n.t('foco'), x - 9, cy + 28);
+    } else if (dir === 'vertical') {
         textAlign(CENTER, BOTTOM);
         text(i18n.t('foco'), x - 9, cy - 28);
     } else {
@@ -665,16 +911,17 @@ function drawMarked(lane, Y, kind, L) {
             drawingContext.setLineDash([2, 3]);
             line(px, cy - wave.A * PX - 4, px, cy + wave.A * PX + 4);
             drawingContext.setLineDash([]);
+            if (THEME.fun) { stroke(THEME.ink); strokeWeight(2.5); } else noStroke();
+            fill(pt.col);
+            circle(px, Y(yv), THEME.fun ? 18 : 12);
             noStroke();
+            if (THEME.fun) { fill(255, 255, 255, 170); circle(px - 3, Y(yv) - 3, 5); }
+            else { fill(THEME.sceneBg); circle(px, Y(yv), 4); }
             fill(pt.col);
-            circle(px, Y(yv), 12);
-            fill(THEME.sceneBg);
-            circle(px, Y(yv), 4);
-            fill(pt.col);
-            textSize(12);
+            textSize(THEME.fun ? 18 : 12);
             textStyle(BOLD);
             textAlign(LEFT, CENTER);
-            text(pt.name, px + 9, Y(yv) + (yv >= 0 ? 12 : -12));
+            text(pt.name, px + (THEME.fun ? 12 : 9), Y(yv) + (yv >= 0 ? 14 : -14));
             textStyle(NORMAL);
         } else {
             const mid = L.rowsY[(ROWS_L - 1) / 2];
@@ -685,13 +932,14 @@ function drawMarked(lane, Y, kind, L) {
             strokeWeight(1);
             line(x0 - r, L.rowsY[ROWS_L - 1] + 14, x0 + r, L.rowsY[ROWS_L - 1] + 14);
             line(x0, L.rowsY[ROWS_L - 1] + 10, x0, L.rowsY[ROWS_L - 1] + 18);
+            if (THEME.fun) { stroke(THEME.ink); strokeWeight(2); } else noStroke();
+            fill(pt.col);
+            for (const ry of L.rowsY) circle(px, ry, ry === mid ? (THEME.fun ? 17 : 12) : (THEME.fun ? 9 : 6));
             noStroke();
+            if (THEME.fun) { fill(255, 255, 255, 170); circle(px - 3, mid - 3, 5); }
+            else { fill(THEME.sceneBg); circle(px, mid, 4); }
             fill(pt.col);
-            for (const ry of L.rowsY) circle(px, ry, ry === mid ? 12 : 6);
-            fill(THEME.sceneBg);
-            circle(px, mid, 4);
-            fill(pt.col);
-            textSize(11);
+            textSize(THEME.fun ? 18 : 11);
             textStyle(BOLD);
             textAlign(CENTER, TOP);
             text(pt.name, x0, L.rowsY[ROWS_L - 1] + 20);
@@ -705,16 +953,16 @@ function drawMarked(lane, Y, kind, L) {
         const yy = lane.cy - wave.A * PX - (mode === 'comparar' ? 18 : 40);
         noStroke();
         fill(THEME.p);
-        textSize(10);
+        textSize(THEME.fun ? 13 : 10);
         textAlign(LEFT, CENTER);
-        dblArrow(px - 18, yy - 12, px - 18, yy + 12, THEME.p, 1.4, 5);
+        dblArrow(px - 18, yy - 12, px - 18, yy + 12, THEME.p, THEME.fun ? 2.2 : 1.4, THEME.fun ? 7 : 5);
         if (mode !== 'comparar') text(i18n.t('vibración'), px - 10, yy);
     } else {
         const yy = mode === 'comparar' ? L.rowsY[0] - 10 : L.rowsY[ROWS_L - 1] + 44;
-        dblArrow(px - 16, yy, px + 16, yy, THEME.p, 1.4, 5);
+        dblArrow(px - 16, yy, px + 16, yy, THEME.p, THEME.fun ? 2.2 : 1.4, THEME.fun ? 7 : 5);
         noStroke();
         fill(THEME.p);
-        textSize(10);
+        textSize(THEME.fun ? 13 : 10);
         textAlign(LEFT, CENTER);
         if (mode !== 'comparar') text(i18n.t('vibración'), px + 22, yy);
     }
@@ -751,6 +999,14 @@ function drawBottomPanel() {
 }
 
 function drawPanelBox(P, title) {
+    if (THEME.fun) {
+        tarjeta(P.x, P.y, P.w, P.h, 18, THEME.panelBg);
+        fill(THEME.textDim); circle(P.x + 20, P.y + 19, 8);
+        fill(THEME.title); textSize(15); textStyle(BOLD); textAlign(LEFT, CENTER);
+        text(frase(title), P.x + 32, P.y + 19);
+        textStyle(NORMAL);
+        return;
+    }
     fill(THEME.panelBg);
     stroke(THEME.panelBorder);
     strokeWeight(1);
@@ -778,17 +1034,20 @@ function drawMagnitudes(P) {
     items.forEach((it, k) => {
         const cx = P.x + 14 + cw * k + cw / 2;
         noStroke();
+        const g = THEME.fun;
         fill(it.c);
         textAlign(CENTER, TOP);
-        textSize(20);
+        textSize(g ? 26 : 20);
         textStyle(BOLD);
-        text(it.s, cx, P.y + 36);
-        textSize(15);
-        text(`${it.v} ${it.u}`, cx, P.y + 64);
+        text(it.s, cx, P.y + (g ? 32 : 36));
+        // Las cifras clave, grandes para leerse desde el fondo de la clase
+        if (g) fill(THEME.title);
+        textSize(g ? 20 : 15);
+        text(`${it.v} ${it.u}`, cx, P.y + (g ? 64 : 64));
         textStyle(NORMAL);
-        textSize(10);
+        textSize(g ? 12 : 10);
         fill(THEME.textDim);
-        text(it.n, cx, P.y + 86);
+        text(it.n, cx, P.y + (g ? 90 : 86));
     });
 
     // Comprobación de las relaciones
@@ -798,13 +1057,19 @@ function drawMagnitudes(P) {
         [i18n.t('Comprobación:'), `v = λ · f = ${fmt(wave.lambda, 2)} m · ${fmt(wave.f, 2)} Hz = ${fmt(wave.v, 2)} m/s`],
     ];
     textSize(11);
+    let col2 = P.x + 150;
+    if (THEME.fun) {
+        textSize(13);
+        col2 = P.x + 18 + Math.max(...lines.map(([a]) => textWidth(a))) + 12;
+        textSize(ajustar(lines.map(([, b]) => b), P.x + P.w - 14 - col2, 13));
+    }
     lines.forEach(([a, b], k) => {
-        const y = P.y + 122 + k * 26;
+        const y = P.y + 122 + k * (THEME.fun ? 28 : 26);
         fill(THEME.textFaint);
         textAlign(LEFT, CENTER);
         text(a, P.x + 18, y);
         fill(THEME.text);
-        text(b, P.x + 150, y);
+        text(b, col2, y);
     });
 }
 
@@ -814,28 +1079,38 @@ function drawEnergy(P) {
     const E = (wave.A / A_REF) ** 2 * (wave.f / F_REF) ** 2;
     const Emax = (A_MAX / A_REF) ** 2 * (F_MAX / F_REF) ** 2;
 
+    const g = THEME.fun;
     noStroke();
     fill(THEME.textFaint);
-    textSize(10.5);
+    textSize(g ? 13 : 10.5);
     textAlign(LEFT, TOP);
-    text(i18n.t('Energía que transporta la onda (E ∝ A² · f²)'), P.x + 18, P.y + 36);
-    const bx = P.x + 18, by = P.y + 56, bw = P.w - 120, bh = 16;
-    fill(THEME.sceneBg);
-    stroke(THEME.panelBorder);
-    rect(bx, by, bw, bh, 4);
-    noStroke();
-    fill(THEME.e);
-    rect(bx, by, Math.max(2, bw * Math.sqrt(E / Emax)), bh, 4);
-    fill(THEME.e);
-    textSize(13);
+    text(i18n.t('Energía que transporta la onda (E ∝ A² · f²)'), P.x + 18, P.y + (g ? 38 : 36));
+    const bx = P.x + 18, by = P.y + (g ? 60 : 56), bw = P.w - (g ? 130 : 120), bh = g ? 20 : 16;
+    if (g) {
+        // Barra gruesa con contorno de tinta y brillo
+        noStroke(); fill(THEME.hundido); rect(bx, by, bw, bh, bh / 2);
+        fill(THEME.e); rect(bx, by, Math.max(bh, bw * Math.sqrt(E / Emax)), bh, bh / 2);
+        fill(255, 255, 255, 90); rect(bx + 6, by + 4, Math.max(4, bw * Math.sqrt(E / Emax) - 12), 4, 2);
+        noFill(); stroke(THEME.ink); strokeWeight(2.5); rect(bx, by, bw, bh, bh / 2);
+        noStroke();
+    } else {
+        fill(THEME.sceneBg);
+        stroke(THEME.panelBorder);
+        rect(bx, by, bw, bh, 4);
+        noStroke();
+        fill(THEME.e);
+        rect(bx, by, Math.max(2, bw * Math.sqrt(E / Emax)), bh, 4);
+    }
+    fill(g ? THEME.title : THEME.e);
+    textSize(g ? 22 : 13);
     textStyle(BOLD);
     textAlign(LEFT, CENTER);
     text(`× ${fmt(E, E < 10 ? 2 : 1)}`, bx + bw + 10, by + bh / 2);
     textStyle(NORMAL);
     fill(THEME.textFaint);
-    textSize(9.5);
+    textSize(g ? 11 : 9.5);
     textAlign(LEFT, TOP);
-    text(i18n.t('respecto a A = 0,20 m y f = 1,00 Hz (barra en escala de raíz cuadrada)'), bx, by + bh + 4);
+    text(i18n.t('respecto a A = 0,20 m y f = 1,00 Hz (barra en escala de raíz cuadrada)'), bx, by + bh + (g ? 6 : 4));
 
     // Lo que avanza la onda frente a lo que avanza la partícula P
     const fr = wave.frontX();
@@ -849,10 +1124,13 @@ function drawEnergy(P) {
     rows.push([THEME.p, i18n.t('La partícula P se ha desplazado:'), i18n.t('{y} m (vuelve siempre a su sitio)', { y: fmtSigned(wave.y(xP), 2) })]);
     rows.push([THEME.p, i18n.t('P oscila entre:'), i18n.t('−{a} m y +{a} m', { a: fmt(wave.A, 2) })]);
     textSize(11);
+    if (THEME.fun) textSize(ajustar(rows.map(([, a, b]) => a + '  ' + b), P.w - 46, 13));
     rows.forEach(([c, a, b], k) => {
-        const y = P.y + 122 + k * 26;
+        const y = P.y + 122 + k * (THEME.fun ? 28 : 26);
         fill(c);
-        circle(P.x + 22, y, 7);
+        if (THEME.fun) { stroke(THEME.ink); strokeWeight(1.5); }
+        circle(P.x + 22, y, THEME.fun ? 10 : 7);
+        noStroke();
         fill(THEME.textFaint);
         textAlign(LEFT, CENTER);
         text(a, P.x + 32, y);
@@ -866,7 +1144,7 @@ function graphAxes(G, xMin, xMax, xStep, xLabel, yMax, yLabel, xDigits) {
     const L = G.x + 56, R = G.x + G.w - 16, T = G.y + 34, B = G.y + G.h - 30;
     const X = (v) => map(v, xMin, xMax, L, R);
     const Yf = (v) => map(v, -yMax, yMax, B, T);
-    textSize(9.5);
+    textSize(THEME.fun ? 11 : 9.5);
     for (let v = Math.ceil(xMin / xStep) * xStep; v <= xMax + 1e-9; v += xStep) {
         stroke(THEME.grid);
         strokeWeight(1);
@@ -900,7 +1178,8 @@ function drawGraphX(G) {
     const ax = graphAxes(G, 0, L_MEDIO, 1, 'x (m)', A_MAX, longi ? i18n.t('ξ (m)') : 'y (m)', 0);
     noFill();
     stroke(THEME.l);
-    strokeWeight(2);
+    strokeWeight(THEME.fun ? 3.5 : 2);
+    strokeJoin(ROUND);
     beginShape();
     for (let x = 0; x <= L_MEDIO + 1e-9; x += 0.02) vertex(ax.X(x), ax.Y(wave.y(x)));
     endShape();
@@ -909,16 +1188,17 @@ function drawGraphX(G) {
         const ex = extrema(x => wave.y(x), visibleEnd(), 0.01);
         if (ex.max.length >= 2) {
             const [x1, x2] = ex.max;
-            hDimension(ax.X(x1), ax.X(x2), ax.T + 6, THEME.l, 'λ');
+            hDimension(ax.X(x1), ax.X(x2), ax.T + 6, THEME.l, 'λ', false);
         }
     }
     const pts = [{ x: xP, c: THEME.p, n: 'P' }];
     if (xP + dxPQ <= L_MEDIO + 1e-9) pts.push({ x: xP + dxPQ, c: THEME.q, n: 'Q' });
     pts.forEach(p => {
-        noStroke();
+        if (THEME.fun) { stroke(THEME.ink); strokeWeight(2); } else noStroke();
         fill(p.c);
-        circle(ax.X(p.x), ax.Y(wave.y(p.x)), 9);
-        textSize(10);
+        circle(ax.X(p.x), ax.Y(wave.y(p.x)), THEME.fun ? 12 : 9);
+        noStroke();
+        textSize(THEME.fun ? 13 : 10);
         textStyle(BOLD);
         textAlign(CENTER, BOTTOM);
         text(p.n, ax.X(p.x), ax.Y(wave.y(p.x)) - 6);
@@ -939,7 +1219,7 @@ function drawGraphT(G) {
     series.forEach(sr => {
         noFill();
         stroke(sr.c);
-        strokeWeight(sr.n === 'P' ? 2 : 1.6);
+        strokeWeight((sr.n === 'P' ? 2 : 1.6) * (THEME.fun ? 1.6 : 1));
         beginShape();
         for (let tt = t0; tt <= Math.min(t1, wave.t) + 1e-9; tt += 0.02) vertex(ax.X(tt), ax.Y(yAt(sr.x, tt)));
         endShape();
@@ -956,12 +1236,12 @@ function drawGraphT(G) {
             a = b; b = c;
             if (maxima.length >= 2) break;
         }
-        if (maxima.length >= 2) hDimension(ax.X(maxima[1]), ax.X(maxima[0]), ax.T + 6, THEME.t, 'T');
+        if (maxima.length >= 2) hDimension(ax.X(maxima[1]), ax.X(maxima[0]), ax.T + 6, THEME.t, 'T', false);
     }
 
     // Leyenda
-    textSize(10.5);
-    let lx = ax.R - 175;
+    textSize(THEME.fun ? 12 : 10.5);
+    let lx = ax.R - (THEME.fun ? 190 : 175);
     series.forEach(sr => {
         stroke(sr.c);
         strokeWeight(3);
@@ -1023,4 +1303,13 @@ function updateLiveNotes() {
     if (xP + dxPQ > L_MEDIO + 1e-9) pn += ' ' + i18n.t('Q queda fuera del tramo dibujado: acerca P al foco.');
     if (wave.kind === 'pulso') pn += ' ' + i18n.t('La ecuación describe la onda continua; con pulsos solo vale mientras pasa el pulso.');
     select('#phase-note').html(pn);
+    // La mascota dice la frase principal, sin los avisos añadidos
+    const clave = dxPQ < 1e-6 ? 'mismo' : (dphi < tol || dphi > 2 * Math.PI - tol) ? 'fase'
+                : Math.abs(dphi - Math.PI) < tol ? 'oposicion' : 'retraso';
+    const div = document.createElement('div');
+    div.innerHTML = { mismo: i18n.t('P y Q son el mismo punto.'),
+                      fase: i18n.t('P y Q vibran <b>en fase</b>: Δx es un número entero de longitudes de onda.'),
+                      oposicion: i18n.t('P y Q vibran <b>en oposición de fase</b>: Δx es un número impar de medias longitudes de onda.'),
+                      retraso: i18n.t('Q repite lo que hace P con un retraso de Δx / v = <b>{d} s</b>.', { d: fmt(dxPQ / wave.v, 2) }) }[clave];
+    notaFase = { clave, txt: div.textContent };
 }
